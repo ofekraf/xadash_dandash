@@ -2,17 +2,24 @@ import requests
 from bs4 import BeautifulSoup
 import pickle
 
+from constants import *
 
 
 def main():
-    haaretz_url = "https://www.haaretz.co.il/"
+    initial_crawl()
 
-    # Get the HTML content of the Haaretz website
-    response = requests.get(haaretz_url)
-    soup = BeautifulSoup(response.text, 'html.parser')
+def initial_crawl():
+    if not INITIAL_CRAWL:
+        return False
 
-    # Find all links to articles on the Haaretz website
-    article_links = [link.get('href') for link in soup.find_all('a') if 'https://promotions.haaretz.co.il/' not in link]
+    article_links = []
+    for link in INITIAL_URLS:
+        # Get the HTML content of the Haaretz website
+        response = requests.get(link)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Find all links to articles on the Haaretz website
+        article_links = article_links.append([link.get('href') for link in soup.find_all('a') if 'https://promotions.haaretz.co.il/' not in link])
 
 
     # Create a dictionary to store the word count and article lists
