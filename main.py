@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-import pickle
-
+from selenium import webdriver
 from constants import *
 
 
@@ -12,48 +11,43 @@ def initial_crawl():
     if not INITIAL_CRAWL:
         return False
 
-    article_links = []
-    for link in INITIAL_URLS:
-        # Get the HTML content of the Haaretz website
-        response = requests.get(link)
-        soup = BeautifulSoup(response.text, 'html.parser')
+    # Create a new Chrome driver instance
+    driver = webdriver.Chrome()
 
-        # Find all links to articles on the Haaretz website
-        article_links = article_links.append([link.get('href') for link in soup.find_all('a') if 'https://promotions.haaretz.co.il/' not in link])
+    # Navigate to the committee protocols page
+    url = 'https://main.knesset.gov.il/Activity/committees/Pages/AllCommitteeProtocols.aspx'
+    driver.get(url)
 
+    # Wait for the page to load completely
+    driver.implicitly_wait(10)
 
-    # Create a dictionary to store the word count and article lists
-    word_dict = {}
+    # Get the HTML content of the page
+    html = driver.page_source
 
-    # Loop through each article link and extract the text
-    for link in article_links:
-        # Get the HTML content of the article
-        article_response = requests.get(link)
-        article_soup = BeautifulSoup(response.text, 'html.parser')
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(html, 'html.parser')
 
-        # Extract the article text and tokenize it into words
-        body = article_soup.find('div', {'class': 'article-body'})
-        if not body:
-            continue
-        words = body.get_text().split()
+    # Find all the links to the committee protocol pages
+    committee_links = []
+    for link in soup.select('a[href^="/committees/protocol"]'):
+        committee_links.append('https://main.knesset.gov.il' + link['href'])
 
+    # Loop through the committee protocol links and extract the words spoken
+    all_words = []
+    for link in committee_links:
+        driver.get(link)
+        driver.implicitly_wait(10)
+        html = driver.page_source
+        session_soup = BeautifulSoup(html, 'html.parser')
+        session_words = session_soup.find_all('span', {'class': 'pspeaker_word'})
+        for word in session_words:
+            all_words.append(word.text.strip())
 
-        # Update the word count and article lists in the dictionary
-        for word in words:
-            if word not in word_dict:
-                word_dict[word] = {
-                    'count': 1,
-                    'articles': [link]
-                }
-            else:
-                word_dict[word]['count'] += 1
-                if link not in word_dict[word]['articles']:
-                    word_dict[word]['articles'].append(link)
+    # Print all the words spoken in committee protocols
+    print(all_words)
 
-
-    # Save the dictionary as a file
-    with open('word_dict.pkl', 'wb') as f:
-        pickle.dump(word_dict, f)
+    # Quit the driver
+    driver.quit()
 
 if __name__ == '__main__':
     main()
